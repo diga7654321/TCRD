@@ -11,18 +11,18 @@ from torch.utils.data import Dataset, DataLoader
 from TrustGraph import build_trust_graph_from_json_with_llm
 from Code.EN.CounterFactual import build_counter_trust_graph_from_json_with_llm
 
-# ==== 配置 ====
-DATA_FILE = "../../Datasets/Weibo/filtered_weibo.json"
-# DATA_FILE = "../../Datasets/filtered_pheme.json"
-TRUST_CACHE = "trust_graph_cache.json"
-COUNTER_CACHE = "trust_counter_graph_cache.json"
-LLM_OUTPUT_FILE = "llm_trust_raw_output.json"
-LLM_counter_OUTPUT_FILE = "llm_trust_counter_raw_output.json"
+
+DATA_FILE = ""
+# DATA_FILE = ""
+TRUST_CACHE = ""
+COUNTER_CACHE = ""
+LLM_OUTPUT_FILE = ""
+LLM_counter_OUTPUT_FILE = ""
 GRAPH_DIM = 64
 SIS_DIM = 64
 BATCH_SIZE = 32
 
-# ==== 加载原始标签 ====
+
 with open(DATA_FILE, 'r', encoding='utf-8') as f:
     raw_data = json.load(f)
 df_labels = pd.DataFrame([
@@ -31,13 +31,13 @@ df_labels = pd.DataFrame([
 ])
 df_labels["news_id"] = df_labels["news_id"].astype(str)
 
-# ==== 构建图结构 ====
-print("📦 构建原始图...")
+
+
 orig_graphs, _ = build_trust_graph_from_json_with_llm(DATA_FILE, TRUST_CACHE, LLM_OUTPUT_FILE)
-print("📦 构建反事实图...")
+
 cf_graphs, _ = build_counter_trust_graph_from_json_with_llm(DATA_FILE, COUNTER_CACHE, LLM_counter_OUTPUT_FILE)
 
-# ==== 图向量 & SIS ====
+
 def graph_to_vector(graph: nx.DiGraph, dim=GRAPH_DIM):
     deg = np.array([d for _, d in graph.degree()])
     if len(deg) == 0:
@@ -57,7 +57,7 @@ def compute_sis(g1: nx.DiGraph, g2: nx.DiGraph) -> float:
         B[idx[u], idx[v]] = d.get("weight", 0)
     return np.linalg.norm(A - B)
 
-# ==== 提取每个图的特征 ====
+
 records = []
 for news_id in orig_graphs:
     news_id_str = str(news_id)
@@ -100,7 +100,7 @@ train_loader = DataLoader(FusionDataset(train_df), batch_size=BATCH_SIZE, shuffl
 val_loader = DataLoader(FusionDataset(val_df), batch_size=BATCH_SIZE)
 test_loader = DataLoader(FusionDataset(test_df), batch_size=BATCH_SIZE)
 
-# ==== 模型结构 ====
+
 class RumorClassifier(nn.Module):
     def __init__(self, g_dim=GRAPH_DIM, sis_dim=SIS_DIM, hidden=128):
         super().__init__()
@@ -120,10 +120,10 @@ class RumorClassifier(nn.Module):
         x = torch.cat([g1, g2, sis_vector], dim=1)
         return self.classifier(x).squeeze(1)
 
-# ==== 训练流程 ====
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = RumorClassifier().to(device)
-EPOCHS = 10
+EPOCHS = 100
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
 criterion = nn.BCEWithLogitsLoss()
 
@@ -151,6 +151,6 @@ for epoch in range(1, EPOCHS + 1):
     print(f"\n🎯 Epoch {epoch} completed. Validation Result:")
     print(evaluate(val_loader))
 
-# ==== 测试集评估 ====
+
 print("\n✅ Final Test Result:")
 print(evaluate(test_loader))
