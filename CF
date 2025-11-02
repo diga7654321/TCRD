@@ -4,9 +4,9 @@ import os
 import networkx as nx
 import pandas as pd
 from openai import OpenAI
-from tqdm import tqdm  # 添加进度条
+from tqdm import tqdm  
 
-# ==== 配置项 ====
+
 OPENAI_KEY = "sk-V9He0b5b0372b2316ba5786853240bc2d8b56c05c28fcEjA"
 OPENAI_BASE = "https://api.gptsapi.net/v1"
 INPUT_FILE = "../../Datasets/Weibo/filtered_weibo.json"
@@ -14,10 +14,10 @@ INPUT_FILE = "../../Datasets/Weibo/filtered_weibo.json"
 
 MODEL = "gpt-4o-mini"
 
-# ==== 初始化 OpenAI 客户端 ====
+
 client = OpenAI(api_key=OPENAI_KEY, base_url=OPENAI_BASE)
 
-# ==== 工具函数 ====
+
 def load_json(path):
     return json.load(open(path, 'r', encoding='utf-8')) if os.path.exists(path) else {}
 
@@ -28,9 +28,9 @@ def save_json(data, path):
 def get_trust_scores_batch(news_content, comment_list, cache, raw_output, news_id, model=MODEL, retries=3):
     news_id_str = str(news_id)
 
-    # 如果已经有 LLM 原始输出，直接解析并返回
+
     if news_id_str in raw_output:
-        print(f"🔁 直接从缓存读取 LLM 输出: {news_id_str}")
+        print(f"🔁  {news_id_str}")
         existing_result = raw_output[news_id_str]
         scores = {}
 
@@ -53,7 +53,7 @@ def get_trust_scores_batch(news_content, comment_list, cache, raw_output, news_i
         cache[news_id_str] = scores
         return scores
 
-    # 否则新调用 LLM
+
     if not comment_list:
         raw_output[news_id_str] = ""
         cache[news_id_str] = {}
@@ -88,7 +88,7 @@ def get_trust_scores_batch(news_content, comment_list, cache, raw_output, news_i
                 temperature=0.2
             )
             result = response.choices[0].message.content.strip()
-            raw_output[news_id_str] = result  # 保存原始响应
+            raw_output[news_id_str] = result  
 
             scores = {}
             lines = [line for line in result.split("\n") if ":" in line]
@@ -123,7 +123,7 @@ def build_counter_trust_graph_from_json_with_llm(json_path, cache_path, llm_outp
     trust_graphs = {}
     edge_records = []
 
-    for idx, (news_id, entry) in enumerate(tqdm(sorted(data.items(), key=lambda x: int(x[0])), desc="🚧 构建原始信任图"),
+    for idx, (news_id, entry) in enumerate(tqdm(sorted(data.items(), key=lambda x: int(x[0])), desc="🚧 "),
                                            start=1):
         news_id_str = str(news_id)
         content = entry.get("content", "")
@@ -133,13 +133,12 @@ def build_counter_trust_graph_from_json_with_llm(json_path, cache_path, llm_outp
 
         comments = [c.strip() for c in comments if isinstance(c, str) and c.strip()][:10]
 
-        # 🧠 尝试从缓存获取 scores；如无则调用 LLM
         if news_id_str in cache and news_id_str in llm_output:
             scores = cache[news_id_str]
         else:
             scores = get_trust_scores_batch(content, comments, cache, llm_output, news_id)
 
-        # ✅ 图构建逻辑始终执行
+
         G = nx.DiGraph()
         news_node = f"news_{news_id}"
         G.add_node(news_node, type="news", content=content)
@@ -160,8 +159,7 @@ def build_counter_trust_graph_from_json_with_llm(json_path, cache_path, llm_outp
 
         trust_graphs[news_id_str] = G
 
-        # 如果是新生成的，就更新缓存文件（可选）
-        # ✅ 每条数据处理完都立即保存缓存，防止中断丢失
+
         save_json(dict(sorted(cache.items(), key=lambda x: int(x[0]))), cache_path)
         save_json(dict(sorted(llm_output.items(), key=lambda x: int(x[0]))), llm_output_path)
 
