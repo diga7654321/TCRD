@@ -18,9 +18,9 @@ TRUST_CACHE = ""
 COUNTER_CACHE = ""
 LLM_OUTPUT_FILE = ""
 LLM_counter_OUTPUT_FILE = ""
-GRAPH_DIM = 64
-SIS_DIM = 64
-BATCH_SIZE = 32
+GRAPH_DIM = 
+SIS_DIM = 
+BATCH_SIZE = 
 
 
 with open(DATA_FILE, 'r', encoding='utf-8') as f:
